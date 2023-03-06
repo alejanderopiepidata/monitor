@@ -124,11 +124,14 @@ services:
     restart: unless-stopped
     volumes:
     - ./loki/loki-config.yml:/mnt/config/loki-config.yml
-    - loki-data:/loki
+    - loki_data:/loki
+    user: root
     ports:
     - 3100:3100
     command: 
     - '-config.file=/mnt/config/loki-config.yml'
+    networks:
+      - monitor
 
     # Agregar Path en contenedor para que pueda traerse los logs: 
     # logging:
@@ -138,6 +141,21 @@ services:
     # 
     # Tambien ejecutar el script .sh que aparece en la carpeta "loki"
 
+###################################################################################################
+#                                               LOKI                                              #
+###################################################################################################
+  promtail:
+    image: grafana/promtail:2.7.2
+    container_name: promtail
+    volumes:
+      - ./loki/promtail-docker-config.yaml:/etc/promtail/config.yml
+      - /var/log/:/var/log/:ro
+      - /home/:/home_server:ro
+      - /root/:/root_user:ro
+      - promtail_data:/tmp
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - monitor
 ### DOCKER NETWORK
 networks:
   monitor:
@@ -147,3 +165,5 @@ networks:
 volumes:
   prometheus_data:
   grafana_data:
+  loki_data:
+  promtail_data:
