@@ -1,0 +1,75 @@
+groups:
+- name: targets
+  rules:
+  - alert: monitor_service_down
+    expr: up == 0
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "Monitor del servicio no operativo"
+      description: "El servicio {{ $labels.instance }} está caído."
+
+###################################################################################################
+#                                             SERVIDOR                                            #
+###################################################################################################
+
+  ######################### RAM #########################
+  - alert: high_memory_load
+    expr: (sum(node_memory_MemTotal_bytes) - sum(node_memory_MemFree_bytes + node_memory_Buffers_bytes + node_memory_Cached_bytes) ) / sum(node_memory_MemTotal_bytes) * 100 > 85
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "La memoria del servidor está casi llena"
+      description: "El uso de la memoria del host de Docker es {{humanize $value}}%. Informado por la instancia {{ $labels.instance }} del trabajo {{ $labels.job }}."
+
+  ######################### ALMACENAMIENTO #########################
+  - alert: high_storage_load
+    expr: (node_filesystem_size_bytes{fstype="aufs"} - node_filesystem_free_bytes{fstype="aufs"}) / node_filesystem_size_bytes{fstype="aufs"}  * 100 > 85
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "El almacenamiento del servidor está casi lleno"
+      description: "El uso de almacenamiento del host de Docker es {{ humanize $value}}%. Informado por la instancia {{ $labels.instance }} del trabajo {{ $labels.job }}."
+
+
+
+###################################################################################################
+#                                          CONTENEDORES                                           #
+###################################################################################################
+
+- name: containers
+  rules:
+
+  ######################### URGE-FRONT #########################
+  ##### SERVICIO CAIDO
+  - alert: urge-front_down
+    expr: absent(container_memory_usage_bytes{name="urge-front"})
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "urge-front down"
+      description: "urge-front el contenedor ha estado inactivo durante más de 30 segundos."
+
+  ##### ALTO CONSUMO DE CPU
+  - alert: urge-front_high_cpu
+    expr: sum(rate(container_cpu_usage_seconds_total{name="urge-front"}[1m])) / count(node_cpu_seconds_total{mode="system"}) * 100 > 10
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "urge-front tiene un alto uso de la CPU"
+      description: "urge-front el uso del CPU es {{ humanize $value}}%."
+
+  ##### ALTO CONSUMO DE MEMORIA RAM
+  - alert: urge-front_high_memory
+    expr: sum(container_memory_usage_bytes{name="urge-front"}) > 1200000000
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "urge-front alto uso de memoria"
+      description: "urge-front el consumo de memoria está en {{ humanize $value}}."
